@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from logsnatch.parsers.base import BaseParser, build_tool_schema
+from logtrain.parsers.base import BaseParser, build_tool_schema
 
 
 def _extract_thinking(text: str) -> tuple[str, list[str]]:
@@ -105,11 +105,7 @@ class QwenParser(BaseParser):
 
                 if include_thinking and thoughts:
                     thought_block = "<think>\n" + "\n".join(thoughts) + "\n</think>"
-                    content = (
-                        (thought_block + "\n" + content).strip()
-                        if content
-                        else thought_block
-                    )
+                    content = (thought_block + "\n" + content).strip() if content else thought_block
 
                 result: dict[str, Any] = {"role": "assistant"}
                 if content:

@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from logsnatch.parsers.base import BaseParser, build_tool_schema
+from logtrain.parsers.base import BaseParser, build_tool_schema
 
 
 class OpenCodeParser(BaseParser):
@@ -68,7 +68,8 @@ class OpenCodeParser(BaseParser):
         min_turns: int = 2,
     ) -> dict | None:
         messages_rows = conn.execute(
-            "SELECT id, data, time_created FROM message WHERE session_id = ? ORDER BY time_created ASC, rowid ASC",
+            "SELECT id, data, time_created FROM message "
+            "WHERE session_id = ? ORDER BY time_created ASC, rowid ASC",
             (session_id,),
         ).fetchall()
 

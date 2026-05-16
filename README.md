@@ -1,4 +1,4 @@
-# logsnatch
+# logtrain
 
 A Python CLI for turning raw coding-agent session logs (Claude Code, OpenCode,
 Qwen Code) into clean, redacted, quality-scored JSONL that loads directly into
@@ -43,7 +43,7 @@ standard library alone, so it works in constrained sandboxes with no network.
 End-to-end on Claude Code logs (auto-discovers `~/.claude/projects`):
 
 ```bash
-python -m logsnatch run --source claude --output training.jsonl
+python -m logtrain run --source claude --output training.jsonl
 ```
 
 This writes the final dataset plus four intermediate files
@@ -53,14 +53,14 @@ This writes the final dataset plus four intermediate files
 Higher-quality cut, all supported providers:
 
 ```bash
-python -m logsnatch run --source all --output data/out.jsonl --min-score 0.7
+python -m logtrain run --source all --output data/out.jsonl --min-score 0.7
 ```
 
 Parse only, then sanity-check records against a real tokenizer:
 
 ```bash
-python -m logsnatch parse --source claude --output data/raw.jsonl
-python -m logsnatch validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
+python -m logtrain parse --source claude --output data/raw.jsonl
+python -m logtrain validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
 ```
 
 ## Commands
@@ -152,7 +152,7 @@ for rec in ds:
   logs are short/noisy: lower `--min-score`, or relax `--min-turns` /
   `--min-token-count` in `evaluate`.
 - **Secrets leaking through** — add a regex to
-  `logsnatch/redaction/secrets.py` and rerun just the `redact` stage on the
+  `logtrain/redaction/secrets.py` and rerun just the `redact` stage on the
   existing `_raw.jsonl` (no need to re-parse).
 - **`run` halted mid-pipeline** — every stage is idempotent and reads only the
   previous stage's file, so you can resume by invoking the next stage directly
@@ -161,7 +161,7 @@ for rec in ds:
 ## Extending
 
 Adding a new agent (e.g. Codex) usually means one new file in
-`logsnatch/parsers/` plus a one-line entry in `parsers/__init__.py`. The
+`logtrain/parsers/` plus a one-line entry in `parsers/__init__.py`. The
 pipeline stages are agent-agnostic and don't need changes.
 
 See `SKILL.md` for the parser contract (`BaseParser`), step-by-step
@@ -202,7 +202,7 @@ with `python -m build` and uploads via `pypa/gh-action-pypi-publish`.
    release). Under the project's **Publishing** settings, add a Trusted
    Publisher with:
    - Owner: your GitHub username/org
-   - Repository: `Logsnatch`
+   - Repository: `logtrain`
    - Workflow: `publish.yml`
    - Environment: `pypi`
 2. **GitHub:** in repo **Settings → Environments**, create an environment named
@@ -231,9 +231,9 @@ PyPI will reject the upload as a duplicate.
 
 - Watch the run under the **Actions** tab; the publish step prints the uploaded
   files.
-- Confirm the new version appears at `https://pypi.org/project/logsnatch/`.
+- Confirm the new version appears at `https://pypi.org/project/logtrain/`.
 - Smoke test in a clean venv:
   ```bash
-  pip install --upgrade logsnatch
-  logsnatch --help
+  pip install --upgrade logtrain
+  logtrain --help
   ```

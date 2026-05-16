@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -11,10 +12,8 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
         for line in f:
             line = line.strip()
             if line:
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     results.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
     return results
 
 
@@ -35,7 +34,7 @@ def _ensure_jsonl(path: str) -> Path:
 
 
 def cmd_parse(args: argparse.Namespace) -> None:
-    from logsnatch.parsers import REGISTRY, get_parser
+    from logtrain.parsers import REGISTRY, get_parser
 
     sources = list(REGISTRY) if args.source == "all" else [args.source]
     output_path = _ensure_jsonl(args.output)
@@ -54,8 +53,8 @@ def cmd_parse(args: argparse.Namespace) -> None:
 
 
 def cmd_redact(args: argparse.Namespace) -> None:
-    from logsnatch.redaction.anonymizer import Anonymizer
-    from logsnatch.redaction.secrets import redact_text
+    from logtrain.redaction.anonymizer import Anonymizer
+    from logtrain.redaction.secrets import redact_text
 
     anon = Anonymizer()
     records = _load_jsonl(Path(args.input))
@@ -79,10 +78,7 @@ def cmd_redact(args: argparse.Namespace) -> None:
                     if func and func.get("arguments"):
                         args = func["arguments"]
                         # Serialize to JSON string for redaction, then parse back
-                        if isinstance(args, dict):
-                            args_json = json.dumps(args)
-                        else:
-                            args_json = str(args)
+                        args_json = json.dumps(args) if isinstance(args, dict) else str(args)
                         redacted_json, count = redact_text(anon.text(args_json))
                         total_redacted += count
                         # Try to recover dict; fall back to redacted string
@@ -109,13 +105,13 @@ def cmd_redact(args: argparse.Namespace) -> None:
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
-    from logsnatch.pipeline.cleanup import clean_file
+    from logtrain.pipeline.cleanup import clean_file
 
     clean_file(Path(args.input), _ensure_jsonl(args.output))
 
 
 def cmd_evaluate(args: argparse.Namespace) -> None:
-    from logsnatch.pipeline.evaluate import evaluate_file
+    from logtrain.pipeline.evaluate import evaluate_file
 
     evaluate_file(
         Path(args.input),
@@ -159,28 +155,27 @@ def _to_arrow_safe(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def cmd_filter(args: argparse.Namespace) -> None:
-    from logsnatch.pipeline.cleanup import format_for_training
+    from logtrain.pipeline.cleanup import format_for_training
 
     records = _load_jsonl(Path(args.input))
     filtered = [r for r in records if r.get("score", 0) >= args.min_score]
     formatted = [_to_arrow_safe(format_for_training(r)) for r in filtered]
     _write_jsonl(_ensure_jsonl(args.output), formatted)
-    print(
-        f"Filtered {len(records)} → {len(filtered)} records (min-score={args.min_score})"
-    )
+    print(f"Filtered {len(records)} → {len(filtered)} records (min-score={args.min_score})")
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
     """Validate parsed sessions against a Qwen chat template with tool support."""
-    from logsnatch.pipeline.cleanup import format_for_training
     from transformers import AutoTokenizer
+
+    from logtrain.pipeline.cleanup import format_for_training
 
     # Load input: either pre-parsed JSONL or parse from source
     if args.input:
         records = _load_jsonl(Path(args.input))
         print(f"Loaded {len(records)} records from {args.input}")
     elif args.source:
-        from logsnatch.parsers import REGISTRY, get_parser
+        from logtrain.parsers import REGISTRY, get_parser
 
         sources = list(REGISTRY) if args.source == "all" else [args.source]
         records = []
@@ -217,9 +212,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
 
         # Count tool calls
         n_calls = sum(
-            len(m.get("tool_calls", []))
-            for m in messages
-            if m.get("role") == "assistant"
+            len(m.get("tool_calls", [])) for m in messages if m.get("role") == "assistant"
         )
         total_tool_calls += n_calls
         if n_calls > 0:
@@ -232,26 +225,28 @@ def cmd_validate(args: argparse.Namespace) -> None:
                     func = tc.get("function", {})
                     args_val = func.get("arguments")
                     if isinstance(args_val, str):
-                        try:
+                        with contextlib.suppress(json.JSONDecodeError, TypeError):
                             func["arguments"] = json.loads(args_val)
-                        except (json.JSONDecodeError, TypeError):
-                            pass
 
         # Try apply_chat_template
         try:
             text = tokenizer.apply_chat_template(
-                messages, tools=tools or None, tokenize=False,
+                messages,
+                tools=tools or None,
+                tokenize=False,
             )
             n_tokens = len(tokenizer.encode(text))
-            passed.append({
-                **formatted,
-                "messages": messages,
-                "_validation": {
-                    "tokens": n_tokens,
-                    "tool_calls": n_calls,
-                    "has_tools": tools is not None,
-                },
-            })
+            passed.append(
+                {
+                    **formatted,
+                    "messages": messages,
+                    "_validation": {
+                        "tokens": n_tokens,
+                        "tool_calls": n_calls,
+                        "has_tools": tools is not None,
+                    },
+                }
+            )
         except Exception as e:
             err_msg = f"{type(e).__name__}: {e}"
             failed.append({"id": rec_id, "error": err_msg, "n_messages": len(messages)})
@@ -259,7 +254,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
 
     # Report
     print(f"\n{'=' * 55}")
-    print(f"  Validation Results")
+    print("  Validation Results")
     print(f"{'=' * 55}")
     print(f"  Total sessions:     {len(records)}")
     print(f"  Passed:             {len(passed)}")
@@ -273,7 +268,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
         print(f"  Avg tokens:         {sum(token_counts) / len(token_counts):.0f}")
 
     if failed:
-        print(f"\n  Failures:")
+        print("\n  Failures:")
         for f in failed[:10]:
             print(f"    [{f['id']}] {f['error']}")
         if len(failed) > 10:
@@ -311,18 +306,25 @@ def cmd_run(args: argparse.Namespace) -> None:
     cmd_redact(parser.parse_args(["redact", "--input", str(raw), "--output", str(redacted)]))
     cmd_clean(parser.parse_args(["clean", "--input", str(redacted), "--output", str(cleaned)]))
     cmd_evaluate(parser.parse_args(["evaluate", "--input", str(cleaned), "--output", str(scored)]))
-    cmd_filter(parser.parse_args([
-        "filter",
-        "--input", str(scored),
-        "--output", str(final_output),
-        "--min-score", str(args.min_score),
-    ]))
+    cmd_filter(
+        parser.parse_args(
+            [
+                "filter",
+                "--input",
+                str(scored),
+                "--output",
+                str(final_output),
+                "--min-score",
+                str(args.min_score),
+            ]
+        )
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="logsnatch",
-        description="logsnatch — extract LLM training logs",
+        prog="logtrain",
+        description="logtrain — extract LLM training logs",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -333,9 +335,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Provider name (claude, opencode, qwen, all)",
     )
-    p_parse.add_argument(
-        "--input", default=None, help="Input path (default: provider default)"
-    )
+    p_parse.add_argument("--input", default=None, help="Input path (default: provider default)")
     p_parse.add_argument("--output", required=True, help="Output JSONL file")
 
     # redact
@@ -382,9 +382,12 @@ def main() -> None:
     parser = build_parser()
     argv = sys.argv[1:] or [
         "run",
-        "--source", "all",
-        "--output", "logsnatch.jsonl",
-        "--min-score", "0.5",
+        "--source",
+        "all",
+        "--output",
+        "logtrain.jsonl",
+        "--min-score",
+        "0.5",
     ]
     args = parser.parse_args(argv)
 

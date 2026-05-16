@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from logsnatch.parsers.base import BaseParser, build_tool_schema
+from logtrain.parsers.base import BaseParser, build_tool_schema
 
 
 def _stitch_resumed_sessions(parsed: list[dict]) -> list[dict]:
@@ -61,11 +61,9 @@ def _stitch_resumed_sessions(parsed: list[dict]) -> list[dict]:
                 "resumed_from": [c["id"] for c in chain[1:]],
                 "end_time": chain[-1]["metadata"].get("end_time"),
             },
-            "tools": list({
-                t["function"]["name"]: t
-                for c in chain
-                for t in c.get("tools", [])
-            }.values()),
+            "tools": list(
+                {t["function"]["name"]: t for c in chain for t in c.get("tools", [])}.values()
+            ),
             "messages": [m for c in chain for m in c["messages"]],
         }
         merged.append(out)
@@ -78,9 +76,7 @@ def _strip_link(s: dict) -> dict:
     return {k: v for k, v in s.items() if k != "_link"}
 
 
-def _make_tool_result_msg(
-    tid: str, name: str, result_block: dict[str, Any]
-) -> dict[str, Any]:
+def _make_tool_result_msg(tid: str, name: str, result_block: dict[str, Any]) -> dict[str, Any]:
     rc = result_block.get("content", "")
     if isinstance(rc, list):
         rc_parts = []
@@ -279,9 +275,7 @@ class ClaudeParser(BaseParser):
                     result_block = tool_results.get(tid)
                     if result_block is not None:
                         messages.append(
-                            _make_tool_result_msg(
-                                tid, tc["function"]["name"], result_block
-                            )
+                            _make_tool_result_msg(tid, tc["function"]["name"], result_block)
                         )
 
         # Filter out empty messages

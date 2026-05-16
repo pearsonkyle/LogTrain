@@ -2,12 +2,12 @@
 
 import json
 
-from logsnatch.pipeline.cleanup import (
+from logtrain.pipeline.cleanup import (
     clean_conversation,
     format_for_training,
     has_failed_command,
 )
-from logsnatch.pipeline.evaluate import evaluate_conversation, evaluate_file
+from logtrain.pipeline.evaluate import evaluate_conversation, evaluate_file
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -268,10 +268,7 @@ class TestFormatForTraining:
         # Original should still have no tools key in first message
         assert "tools" not in conv["messages"][0]
         # Original arguments should still be a string
-        assert (
-            conv["messages"][1]["tool_calls"][0]["function"]["arguments"]
-            == '{"cmd": "ls"}'
-        )
+        assert conv["messages"][1]["tool_calls"][0]["function"]["arguments"] == '{"cmd": "ls"}'
 
     def test_full_pipeline_produces_trainer_compatible_output(self):
         """End-to-end: clean → evaluate → format produces trainer-ready data."""
@@ -337,7 +334,7 @@ class TestFormatForTraining:
     def test_real_qwen_output_schema_compatible(self):
         """Verify real Qwen pipeline output converts to trainer-compatible format.
 
-        This mirrors the exact structure produced by `python -m logsnatch run --source qwen`.
+        This mirrors the exact structure produced by `python -m logtrain run --source qwen`.
         The trainer expects:
         - tools embedded in messages[0]["tools"]
         - tool_call arguments as dicts (not JSON strings)
@@ -389,7 +386,7 @@ class TestFormatForTraining:
                 },
                 {
                     "role": "assistant",
-                    "content": "<think>\nI need to read the file first.\n</think>\nLet me read the file.",
+                    "content": "<think>\nI need to read the file first.\n</think>\nLet me read the file.",  # noqa: E501
                     "tool_calls": [
                         {
                             "id": "call_abc123",
@@ -416,7 +413,7 @@ class TestFormatForTraining:
                             "type": "function",
                             "function": {
                                 "name": "edit",
-                                "arguments": '{"file_path": "/app/main.py", "old_string": "def main():\\n    data = load_data()\\n    process(data)", "new_string": "def main():\\n    try:\\n        data = load_data()\\n        process(data)\\n    except Exception as e:\\n        print(f\\"Error: {e}\\")"}',
+                                "arguments": '{"file_path": "/app/main.py", "old_string": "def main():\\n    data = load_data()\\n    process(data)", "new_string": "def main():\\n    try:\\n        data = load_data()\\n        process(data)\\n    except Exception as e:\\n        print(f\\"Error: {e}\\")"}',  # noqa: E501
                             },
                         }
                     ],
@@ -446,9 +443,7 @@ class TestFormatForTraining:
         for msg in result["messages"]:
             for tc in msg.get("tool_calls", []):
                 args = tc["function"]["arguments"]
-                assert isinstance(args, dict), (
-                    f"arguments should be dict, got {type(args)}: {args}"
-                )
+                assert isinstance(args, dict), f"arguments should be dict, got {type(args)}: {args}"
 
         # Tool response messages have required fields
         for msg in result["messages"]:
@@ -483,8 +478,17 @@ def _agentic_conversation(
     contain "Error:". When `silent_tool_calls=True`, assistant content is
     empty for tool-call turns (the Claude default).
     """
-    base_pool = ["read_file", "write_file", "bash", "grep", "list_files",
-                 "edit", "search", "fetch_url", "create_file"]
+    base_pool = [
+        "read_file",
+        "write_file",
+        "bash",
+        "grep",
+        "list_files",
+        "edit",
+        "search",
+        "fetch_url",
+        "create_file",
+    ]
     pool: list[str] = []
     if include_edit_chain:
         pool.extend(["read_file", "write_file"])
@@ -500,21 +504,27 @@ def _agentic_conversation(
     for i in range(n_calls):
         name = pool[i % len(pool)]
         call_id = f"call_{i}"
-        messages.append({
-            "role": "assistant",
-            "content": "" if silent_tool_calls else f"Calling {name}.",
-            "tool_calls": [{
-                "id": call_id,
-                "type": "function",
-                "function": {"name": name, "arguments": "{}"},
-            }],
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "" if silent_tool_calls else f"Calling {name}.",
+                "tool_calls": [
+                    {
+                        "id": call_id,
+                        "type": "function",
+                        "function": {"name": name, "arguments": "{}"},
+                    }
+                ],
+            }
+        )
         result_text = "Error: boom" if i < n_errors else f"ok-{i}"
-        messages.append({
-            "role": "tool",
-            "tool_call_id": call_id,
-            "content": result_text,
-        })
+        messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": call_id,
+                "content": result_text,
+            }
+        )
     messages.append({"role": "assistant", "content": "Done."})
     return {"id": "synth", "source": "claude", "messages": messages}
 
@@ -561,8 +571,11 @@ class TestScoreSemantics:
     def test_substantive_agentic_session_scores_high(self):
         """20 calls, 5 tools, read+write, plenty of tokens → score >= 0.7."""
         conv = _agentic_conversation(
-            n_calls=20, n_tools=5, user_text_chars=4000,
-            include_edit_chain=True, error_fraction=0.0,
+            n_calls=20,
+            n_tools=5,
+            user_text_chars=4000,
+            include_edit_chain=True,
+            error_fraction=0.0,
         )
         result = evaluate_conversation(conv)
         assert result["score"] >= 0.7, (result["score"], result["reasons"])
@@ -571,8 +584,11 @@ class TestScoreSemantics:
     def test_error_swamp_scores_low(self):
         """High error ratio must drive score below 0.5."""
         conv = _agentic_conversation(
-            n_calls=10, n_tools=3, user_text_chars=4000,
-            include_edit_chain=True, error_fraction=0.8,
+            n_calls=10,
+            n_tools=3,
+            user_text_chars=4000,
+            include_edit_chain=True,
+            error_fraction=0.8,
         )
         result = evaluate_conversation(conv)
         assert result["score"] < 0.5, (result["score"], result["reasons"])
@@ -583,8 +599,11 @@ class TestScoreSemantics:
         scores = []
         for chars in (2000, 8000, 16000, 32000):
             conv = _agentic_conversation(
-                n_calls=10, n_tools=3, user_text_chars=chars,
-                include_edit_chain=True, error_fraction=0.0,
+                n_calls=10,
+                n_tools=3,
+                user_text_chars=chars,
+                include_edit_chain=True,
+                error_fraction=0.0,
             )
             scores.append(evaluate_conversation(conv)["score"])
         # Monotone non-decreasing
@@ -593,8 +612,11 @@ class TestScoreSemantics:
     def test_trivial_token_count_hits_hard_floor(self):
         """Even with tool calls, below min_token_count → score 0.0."""
         conv = _agentic_conversation(
-            n_calls=2, n_tools=1, user_text_chars=10,
-            include_edit_chain=False, error_fraction=0.0,
+            n_calls=2,
+            n_tools=1,
+            user_text_chars=10,
+            include_edit_chain=False,
+            error_fraction=0.0,
         )
         result = evaluate_conversation(conv)  # default min_token_count=1000
         assert result["score"] == 0.0
@@ -604,8 +626,11 @@ class TestScoreSemantics:
         scores = []
         for n_tools in (1, 3, 5):
             conv = _agentic_conversation(
-                n_calls=15, n_tools=n_tools, user_text_chars=4000,
-                include_edit_chain=(n_tools >= 2), error_fraction=0.0,
+                n_calls=15,
+                n_tools=n_tools,
+                user_text_chars=4000,
+                include_edit_chain=(n_tools >= 2),
+                error_fraction=0.0,
             )
             scores.append(evaluate_conversation(conv)["score"])
         assert scores[0] < scores[2], scores
@@ -617,8 +642,11 @@ class TestScoreSemantics:
         tool-diverse session below the keep threshold.
         """
         conv = _agentic_conversation(
-            n_calls=15, n_tools=4, user_text_chars=4000,
-            include_edit_chain=True, error_fraction=0.0,
+            n_calls=15,
+            n_tools=4,
+            user_text_chars=4000,
+            include_edit_chain=True,
+            error_fraction=0.0,
             silent_tool_calls=True,
         )
         result = evaluate_conversation(conv)
@@ -693,8 +721,7 @@ class TestCleanerBoundaries:
     def test_plan_approval_text_kept(self):
         """Claude's plan-approval system message must survive cleaning."""
         content = (
-            "User has approved your plan. You can now start coding. "
-            "Start with the first todo."
+            "User has approved your plan. You can now start coding. " "Start with the first todo."
         )
         assert has_failed_command(content) is False
 
@@ -703,10 +730,7 @@ class TestCleanerBoundaries:
         sufficient to drop — it appears in docs, error messages being
         explained, and code samples. Only an actual nonzero exit code or
         command-not-found / no-such-file qualifies."""
-        assert (
-            has_failed_command("The article explains permission denied errors.")
-            is False
-        )
+        assert has_failed_command("The article explains permission denied errors.") is False
 
     def test_word_failed_alone_kept(self):
         assert has_failed_command("All 17 tests passed; 0 failed.") is False
@@ -781,4 +805,3 @@ class TestCleanerBoundaries:
             assert m["role"] != "tool"
             if m["role"] == "assistant":
                 assert not m.get("tool_calls")
-

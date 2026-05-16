@@ -2,16 +2,14 @@
 
 import json
 import sqlite3
-import tempfile
 from pathlib import Path
 
 import pytest
 
-from logsnatch.parsers import REGISTRY, get_parser
-from logsnatch.parsers.claude import ClaudeParser
-from logsnatch.parsers.opencode import OpenCodeParser
-from logsnatch.parsers.qwen import QwenParser
-
+from logtrain.parsers import REGISTRY, get_parser
+from logtrain.parsers.claude import ClaudeParser
+from logtrain.parsers.opencode import OpenCodeParser
+from logtrain.parsers.qwen import QwenParser
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -144,12 +142,8 @@ def make_opencode_db(tmp_path: Path) -> Path:
     conn.execute(
         "CREATE TABLE session (id TEXT, directory TEXT, time_created TEXT, time_updated TEXT)"
     )
-    conn.execute(
-        "CREATE TABLE message (id TEXT, session_id TEXT, data TEXT, time_created TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE part (message_id TEXT, data TEXT, time_created TEXT)"
-    )
+    conn.execute("CREATE TABLE message (id TEXT, session_id TEXT, data TEXT, time_created TEXT)")
+    conn.execute("CREATE TABLE part (message_id TEXT, data TEXT, time_created TEXT)")
     conn.execute(
         "INSERT INTO session VALUES (?, ?, ?, ?)",
         ("sess-abc", "/projects/myapp", "2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z"),
@@ -165,7 +159,11 @@ def make_opencode_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         "INSERT INTO part VALUES (?, ?, ?)",
-        ("msg-1", json.dumps({"type": "text", "text": "List the files please"}), "2024-01-01T00:00:00Z"),
+        (
+            "msg-1",
+            json.dumps({"type": "text", "text": "List the files please"}),
+            "2024-01-01T00:00:00Z",
+        ),
     )
     conn.execute(
         "INSERT INTO message VALUES (?, ?, ?, ?)",
@@ -536,7 +534,7 @@ def test_claude_thinking_with_tool_use(tmp_path):
 
 def test_claude_format_for_training_embeds_tools(tmp_path):
     """End-to-end: parse → format_for_training → tools embedded in messages[0]."""
-    from logsnatch.pipeline.cleanup import format_for_training
+    from logtrain.pipeline.cleanup import format_for_training
 
     base = make_claude_jsonl(tmp_path)
     parser = ClaudeParser()
@@ -665,12 +663,8 @@ def test_opencode_empty_db(tmp_path):
     conn.execute(
         "CREATE TABLE session (id TEXT, directory TEXT, time_created TEXT, time_updated TEXT)"
     )
-    conn.execute(
-        "CREATE TABLE message (id TEXT, session_id TEXT, data TEXT, time_created TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE part (message_id TEXT, data TEXT, time_created TEXT)"
-    )
+    conn.execute("CREATE TABLE message (id TEXT, session_id TEXT, data TEXT, time_created TEXT)")
+    conn.execute("CREATE TABLE part (message_id TEXT, data TEXT, time_created TEXT)")
     conn.commit()
     conn.close()
     parser = OpenCodeParser()

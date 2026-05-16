@@ -12,6 +12,7 @@ by penalizing normal Claude "silent tool call" turns (assistant content="" with
 tool_calls set) and by using absolute (rather than ratio) error counts that
 inevitably fired on long sessions.
 """
+
 import json
 import math
 import re
@@ -55,18 +56,24 @@ def _clamp(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
 # discriminate among the "very good" tail by other axes (edit chains, etc).
 _LENGTH_SATURATION_TOKENS = 8000
 _CALLS_SATURATION = 20
-_DIVERSITY_SATURATION = 5   # 5+ distinct tools = full diversity credit
+_DIVERSITY_SATURATION = 5  # 5+ distinct tools = full diversity credit
 
-_ERROR_RATIO_FLOOR = 0.30   # penalty kicks in past 30% errors
-_ERROR_RATIO_SPAN = 0.30    # ... and saturates 30 percentage points later
+_ERROR_RATIO_FLOOR = 0.30  # penalty kicks in past 30% errors
+_ERROR_RATIO_SPAN = 0.30  # ... and saturates 30 percentage points later
 _EMPTY_RATIO_FLOOR = 0.10
 _EMPTY_RATIO_SPAN = 0.30
 
 _READ_TOOLS = frozenset({"read_file", "view", "cat", "read"})
-_WRITE_TOOLS = frozenset({
-    "write_file", "edit", "create_file",
-    "str_replace_editor", "str_replace_based_edit_tool", "write",
-})
+_WRITE_TOOLS = frozenset(
+    {
+        "write_file",
+        "edit",
+        "create_file",
+        "str_replace_editor",
+        "str_replace_based_edit_tool",
+        "write",
+    }
+)
 
 
 def evaluate_conversation(
@@ -136,13 +143,11 @@ def evaluate_conversation(
     empty_ratio = (truly_empty_assistant / assistant_turns) if assistant_turns else 0.0
 
     # --- Saturating positive signals (each in [0, 1]) ---
-    s_length = _clamp(
-        math.log1p(total_tokens) / math.log1p(_LENGTH_SATURATION_TOKENS)
+    s_length = _clamp(math.log1p(total_tokens) / math.log1p(_LENGTH_SATURATION_TOKENS))
+    s_calls = _clamp(math.log1p(tool_calls_count) / math.log1p(_CALLS_SATURATION))
+    s_diversity = (
+        _clamp((tool_diversity - 1) / (_DIVERSITY_SATURATION - 1)) if tool_diversity else 0.0
     )
-    s_calls = _clamp(
-        math.log1p(tool_calls_count) / math.log1p(_CALLS_SATURATION)
-    )
-    s_diversity = _clamp((tool_diversity - 1) / (_DIVERSITY_SATURATION - 1)) if tool_diversity else 0.0
     s_editchain = 1.0 if has_edit_chain else 0.0
     s_pairing = (complete_pairs / tool_calls_count) if tool_calls_count else 0.0
     s_thinking = 1.0 if thinking_count > 0 else 0.0
@@ -153,14 +158,18 @@ def evaluate_conversation(
     p_empty = _clamp((empty_ratio - _EMPTY_RATIO_FLOOR) / _EMPTY_RATIO_SPAN)
 
     score = (
-        0.35 * s_length
-        + 0.20 * s_calls
-        + 0.15 * s_diversity
-        + 0.10 * s_editchain
-        + 0.10 * s_pairing
-        + 0.05 * s_thinking
-        + 0.05 * s_user
-    ) - 0.30 * p_err - 0.20 * p_empty
+        (
+            0.35 * s_length
+            + 0.20 * s_calls
+            + 0.15 * s_diversity
+            + 0.10 * s_editchain
+            + 0.10 * s_pairing
+            + 0.05 * s_thinking
+            + 0.05 * s_user
+        )
+        - 0.30 * p_err
+        - 0.20 * p_empty
+    )
 
     reasons: list[str] = [
         f"length:{s_length:.2f}",
@@ -265,9 +274,7 @@ def evaluate_file(
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Evaluate conversation quality for training data"
-    )
+    parser = argparse.ArgumentParser(description="Evaluate conversation quality for training data")
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--min-turns", type=int, default=2)

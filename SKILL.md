@@ -1,9 +1,9 @@
 ---
-name: logsnatch
+name: logtrain
 description: Parse, redact, score, and filter coding-agent conversation logs (Claude Code, OpenCode, Qwen Code) into JSONL training data, and add new parsers for additional agents. Use this skill whenever the user wants to turn raw agent session logs into a training-ready dataset, scrub secrets or anonymize paths in conversation logs, score or filter agent transcripts by quality, validate JSONL records against a Qwen-style chat template, or add support for a new coding-agent log format. Trigger even when the user does not name the CLI explicitly — phrases like "extract my Claude sessions", "make a fine-tuning dataset from my logs", "redact secrets in these JSONLs", or "add a Codex parser" all apply.
 ---
 
-# logsnatch
+# logtrain
 
 A small Python CLI that converts raw coding-agent session logs into clean,
 redacted, quality-scored JSONL suitable for SFT training. Out of the box it
@@ -47,7 +47,7 @@ needs a tokenizer to apply a chat template).
 
 ## Using the CLI
 
-The entry point is `python -m logsnatch <command>`. Every subcommand reads and
+The entry point is `python -m logtrain <command>`. Every subcommand reads and
 writes JSONL.
 
 ### Common workflows
@@ -55,7 +55,7 @@ writes JSONL.
 End-to-end, default settings:
 
 ```bash
-python -m logsnatch run --source claude --output data/training.jsonl
+python -m logtrain run --source claude --output data/training.jsonl
 ```
 
 Parse only, then validate against a tokenizer (good when you want to confirm
@@ -63,14 +63,14 @@ records will round-trip through `apply_chat_template` before spending time on
 the rest of the pipeline):
 
 ```bash
-python -m logsnatch parse --source claude --output data/raw.jsonl
-python -m logsnatch validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
+python -m logtrain parse --source claude --output data/raw.jsonl
+python -m logtrain validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
 ```
 
 Pull from all supported sources and keep only high-quality sessions:
 
 ```bash
-python -m logsnatch run --source all --output data/out.jsonl --min-score 0.7
+python -m logtrain run --source all --output data/out.jsonl --min-score 0.7
 ```
 
 ### Subcommand reference
@@ -125,7 +125,7 @@ pipeline stages are agent-agnostic and operate on the uniform message format.
 ### Where things live
 
 ```
-logsnatch/parsers/
+logtrain/parsers/
 ├── __init__.py     # REGISTRY dict + get_parser()
 ├── base.py         # BaseParser ABC + build_tool_schema() helper
 ├── claude.py
@@ -152,12 +152,12 @@ load-bearing — downstream stages assume `messages` is a list of dicts with
 
 ### Steps to add a new agent (e.g., "codex")
 
-1. **Create `logsnatch/parsers/codex.py`.** Subclass `BaseParser`, set `SOURCE =
+1. **Create `logtrain/parsers/codex.py`.** Subclass `BaseParser`, set `SOURCE =
    "codex"` and `DEFAULT_LOG_DIR` to wherever that agent stores logs (use
    `Path.home() / ...`). Implement `discover_sessions` (usually a `glob`) and
    `parse_session` (read the file, normalize each turn into the OpenAI
    message shape).
-2. **Register it in `logsnatch/parsers/__init__.py`** by importing the class and
+2. **Register it in `logtrain/parsers/__init__.py`** by importing the class and
    adding `"codex": CodexParser` to `REGISTRY`. That single line makes
    `--source codex` work everywhere — `parse`, `validate`, and `run`.
 3. **Reuse helpers.** `build_tool_schema(func_name, args)` infers an
@@ -188,13 +188,13 @@ load-bearing — downstream stages assume `messages` is a list of dicts with
 Less common, but if you need to:
 
 - **New redaction rules:** add a regex + replacement in
-  `logsnatch/redaction/secrets.py`. The function `redact_text` returns
+  `logtrain/redaction/secrets.py`. The function `redact_text` returns
   `(redacted, count)` — keep that contract so the CLI's reporting still
   works.
-- **New scoring signal:** edit `logsnatch/pipeline/evaluate.py`. Combine your
+- **New scoring signal:** edit `logtrain/pipeline/evaluate.py`. Combine your
   signal into the existing `score` (a float in roughly [0, 1]) rather than
   inventing a parallel field — `filter` only knows about `score`.
-- **Custom cleaning rule:** edit `logsnatch/pipeline/cleanup.py`'s
+- **Custom cleaning rule:** edit `logtrain/pipeline/cleanup.py`'s
   `clean_conversation`. The training-format conversion lives in
   `format_for_training` in the same file — keep cleaning and formatting
   separate.

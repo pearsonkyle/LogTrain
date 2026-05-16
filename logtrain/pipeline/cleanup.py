@@ -1,8 +1,8 @@
+import contextlib
 import json
 import re
 from pathlib import Path
 from typing import Any
-
 
 # Narrow set of unambiguous shell-failure signatures. The earlier version had
 # regexes like `error:`, `failed`, `not found:`, `permission denied`, which
@@ -44,9 +44,7 @@ def has_failed_command(content: str) -> bool:
 
     if _COMMAND_NOT_FOUND_RX.search(content):
         return True
-    if _NO_SUCH_FILE_RX.search(content):
-        return True
-    return False
+    return bool(_NO_SUCH_FILE_RX.search(content))
 
 
 def remove_orphaned_tool_calls(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -59,9 +57,7 @@ def remove_orphaned_tool_calls(messages: list[dict[str, Any]]) -> list[dict[str,
     cleaned = []
     for msg in messages:
         if msg.get("role") == "assistant" and msg.get("tool_calls"):
-            kept_calls = [
-                tc for tc in msg["tool_calls"] if tc.get("id", "") in result_ids
-            ]
+            kept_calls = [tc for tc in msg["tool_calls"] if tc.get("id", "") in result_ids]
             if not kept_calls and not msg.get("content", "").strip():
                 continue
             msg = (
@@ -169,10 +165,8 @@ def format_for_training(conversation: dict[str, Any]) -> dict[str, Any]:
                     func = dict(func)
                     args = func.get("arguments")
                     if isinstance(args, str):
-                        try:
+                        with contextlib.suppress(json.JSONDecodeError, TypeError):
                             func["arguments"] = json.loads(args)
-                        except (json.JSONDecodeError, TypeError):
-                            pass
                     tc["function"] = func
                 new_calls.append(tc)
             msg["tool_calls"] = new_calls

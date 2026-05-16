@@ -12,7 +12,7 @@ def build_tool_schema(func_name: str, args: dict) -> dict:
             prop_type = "string"
         elif isinstance(value, bool):
             prop_type = "boolean"
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             prop_type = "number"
         elif isinstance(value, list):
             prop_type = "array"
