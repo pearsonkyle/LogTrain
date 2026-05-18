@@ -1,5 +1,5 @@
 [project]
-name = "logtrain"
+name = "logminer"
 version = "0.1.0"
 description = "CLI to parse, redact, clean, score, and filter coding-agent logs (Claude Code, OpenCode, Qwen)"
 readme = "README.md"
@@ -20,14 +20,14 @@ validate = ["transformers>=4.40"]
 test = ["pytest"]
 
 [project.scripts]
-logtrain = "logtrain.cli:main"
+logminer = "logminer.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["logtrain"]
+packages = ["logminer"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

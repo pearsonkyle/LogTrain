@@ -18,7 +18,7 @@ def _bip39_words() -> frozenset[str]:
     """Lazy-load the BIP-39 English wordlist (2048 words)."""
     global _BIP39_WORDS
     if _BIP39_WORDS is None:
-        data = resources.files("logtrain.redaction").joinpath("bip39_wordlist.txt")
+        data = resources.files("logminer.redaction").joinpath("bip39_wordlist.txt")
         _BIP39_WORDS = frozenset(
             line.strip() for line in data.read_text().splitlines() if line.strip()
         )

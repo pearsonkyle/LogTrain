@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from logtrain.parsers.base import BaseParser, build_tool_schema
+from logminer.parsers.base import BaseParser, build_tool_schema
 
 _BUNDLED_PROMPT_DIR = Path(__file__).parent / "opencode_prompts"
 _USER_SYSTEM_PROMPT = Path.home() / ".local" / "share" / "opencode" / "system.md"

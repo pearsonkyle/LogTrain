@@ -1,7 +1,7 @@
-from logtrain.parsers.base import BaseParser
-from logtrain.parsers.claude import ClaudeParser
-from logtrain.parsers.opencode import OpenCodeParser
-from logtrain.parsers.qwen import QwenParser
+from logminer.parsers.base import BaseParser
+from logminer.parsers.claude import ClaudeParser
+from logminer.parsers.opencode import OpenCodeParser
+from logminer.parsers.qwen import QwenParser
 
 REGISTRY: dict[str, type[BaseParser]] = {
     "claude": ClaudeParser,

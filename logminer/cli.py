@@ -34,7 +34,7 @@ def _ensure_jsonl(path: str) -> Path:
 
 
 def cmd_parse(args: argparse.Namespace) -> None:
-    from logtrain.parsers import REGISTRY, get_parser
+    from logminer.parsers import REGISTRY, get_parser
 
     sources = list(REGISTRY) if args.source == "all" else [args.source]
     output_path = _ensure_jsonl(args.output)
@@ -53,8 +53,8 @@ def cmd_parse(args: argparse.Namespace) -> None:
 
 
 def cmd_redact(args: argparse.Namespace) -> None:
-    from logtrain.redaction.anonymizer import Anonymizer
-    from logtrain.redaction.secrets import redact_text
+    from logminer.redaction.anonymizer import Anonymizer
+    from logminer.redaction.secrets import redact_text
 
     anon = Anonymizer()
     records = _load_jsonl(Path(args.input))
@@ -105,13 +105,13 @@ def cmd_redact(args: argparse.Namespace) -> None:
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
-    from logtrain.pipeline.cleanup import clean_file
+    from logminer.pipeline.cleanup import clean_file
 
     clean_file(Path(args.input), _ensure_jsonl(args.output))
 
 
 def cmd_evaluate(args: argparse.Namespace) -> None:
-    from logtrain.pipeline.evaluate import evaluate_file
+    from logminer.pipeline.evaluate import evaluate_file
 
     evaluate_file(
         Path(args.input),
@@ -155,7 +155,7 @@ def _to_arrow_safe(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def cmd_filter(args: argparse.Namespace) -> None:
-    from logtrain.pipeline.cleanup import format_for_training
+    from logminer.pipeline.cleanup import format_for_training
 
     records = _load_jsonl(Path(args.input))
     filtered = [r for r in records if r.get("score", 0) >= args.min_score]
@@ -168,14 +168,14 @@ def cmd_validate(args: argparse.Namespace) -> None:
     """Validate parsed sessions against a Qwen chat template with tool support."""
     from transformers import AutoTokenizer
 
-    from logtrain.pipeline.cleanup import format_for_training
+    from logminer.pipeline.cleanup import format_for_training
 
     # Load input: either pre-parsed JSONL or parse from source
     if args.input:
         records = _load_jsonl(Path(args.input))
         print(f"Loaded {len(records)} records from {args.input}")
     elif args.source:
-        from logtrain.parsers import REGISTRY, get_parser
+        from logminer.parsers import REGISTRY, get_parser
 
         sources = list(REGISTRY) if args.source == "all" else [args.source]
         records = []
@@ -323,8 +323,8 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="logtrain",
-        description="logtrain — extract LLM training logs",
+        prog="logminer",
+        description="logminer — extract LLM training logs",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -385,7 +385,7 @@ def main() -> None:
         "--source",
         "all",
         "--output",
-        "logtrain.jsonl",
+        "logminer.jsonl",
         "--min-score",
         "0.5",
     ]

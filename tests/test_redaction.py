@@ -1,7 +1,7 @@
 """Tests for the redaction module."""
 
-from logtrain.redaction.anonymizer import Anonymizer
-from logtrain.redaction.secrets import redact_text, scan_text
+from logminer.redaction.anonymizer import Anonymizer
+from logminer.redaction.secrets import redact_text, scan_text
 
 
 def test_anthropic_api_key_detected():

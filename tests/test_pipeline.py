@@ -2,12 +2,12 @@
 
 import json
 
-from logtrain.pipeline.cleanup import (
+from logminer.pipeline.cleanup import (
     clean_conversation,
     format_for_training,
     has_failed_command,
 )
-from logtrain.pipeline.evaluate import evaluate_conversation, evaluate_file
+from logminer.pipeline.evaluate import evaluate_conversation, evaluate_file
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -334,7 +334,7 @@ class TestFormatForTraining:
     def test_real_qwen_output_schema_compatible(self):
         """Verify real Qwen pipeline output converts to trainer-compatible format.
 
-        This mirrors the exact structure produced by `python -m logtrain run --source qwen`.
+        This mirrors the exact structure produced by `python -m logminer run --source qwen`.
         The trainer expects:
         - tools embedded in messages[0]["tools"]
         - tool_call arguments as dicts (not JSON strings)

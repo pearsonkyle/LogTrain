@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from logtrain.parsers import REGISTRY, get_parser
-from logtrain.parsers.claude import ClaudeParser
-from logtrain.parsers.opencode import OpenCodeParser
-from logtrain.parsers.qwen import QwenParser
+from logminer.parsers import REGISTRY, get_parser
+from logminer.parsers.claude import ClaudeParser
+from logminer.parsers.opencode import OpenCodeParser
+from logminer.parsers.qwen import QwenParser
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -534,7 +534,7 @@ def test_claude_thinking_with_tool_use(tmp_path):
 
 def test_claude_format_for_training_embeds_tools(tmp_path):
     """End-to-end: parse → format_for_training → tools embedded in messages[0]."""
-    from logtrain.pipeline.cleanup import format_for_training
+    from logminer.pipeline.cleanup import format_for_training
 
     base = make_claude_jsonl(tmp_path)
     parser = ClaudeParser()

@@ -1,4 +1,4 @@
-# logtrain
+# logminer
 
 A Python CLI for turning raw coding-agent session logs (Claude Code, OpenCode,
 Qwen Code) into clean, redacted, quality-scored JSONL that loads directly into
@@ -41,7 +41,7 @@ standard library alone, so it works in constrained sandboxes with no network.
 End-to-end on Claude Code logs (auto-discovers `~/.claude/projects`):
 
 ```bash
-python -m logtrain run --source claude --output training.jsonl
+python -m logminer run --source claude --output training.jsonl
 ```
 
 This writes the final dataset plus four intermediate files
@@ -51,14 +51,14 @@ This writes the final dataset plus four intermediate files
 Higher-quality cut, all supported providers:
 
 ```bash
-python -m logtrain run --source all --output data/out.jsonl --min-score 0.7
+python -m logminer run --source all --output data/out.jsonl --min-score 0.7
 ```
 
 Parse only, then sanity-check records against a real tokenizer:
 
 ```bash
-python -m logtrain parse --source claude --output data/raw.jsonl
-python -m logtrain validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
+python -m logminer parse --source claude --output data/raw.jsonl
+python -m logminer validate --input data/raw.jsonl --model Qwen/Qwen3.5-4B
 ```
 
 ### Default log locations
@@ -124,7 +124,7 @@ for rec in ds:
 ## Extending
 
 Adding a new agent (e.g. Codex) usually means one new file in
-`logtrain/parsers/` plus a one-line entry in `parsers/__init__.py`. The
+`logminer/parsers/` plus a one-line entry in `parsers/__init__.py`. The
 pipeline stages are agent-agnostic and don't need changes.
 
 See `SKILL.md` for the parser contract (`BaseParser`), step-by-step
@@ -165,7 +165,7 @@ with `python -m build` and uploads via `pypa/gh-action-pypi-publish`.
    release). Under the project's **Publishing** settings, add a Trusted
    Publisher with:
    - Owner: your GitHub username/org
-   - Repository: `logtrain`
+   - Repository: `logminer`
    - Workflow: `publish.yml`
    - Environment: `pypi`
 2. **GitHub:** in repo **Settings → Environments**, create an environment named
@@ -194,13 +194,13 @@ PyPI will reject the upload as a duplicate.
 
 - Watch the run under the **Actions** tab; the publish step prints the uploaded
   files.
-- Confirm the new version appears at `https://pypi.org/project/logtrain/`.
+- Confirm the new version appears at `https://pypi.org/project/logminer/`.
 - Smoke test in a clean venv:
   ```bash
-  pip install --upgrade logtrain
-  logtrain --help
+  pip install --upgrade logminer
+  logminer --help
   ```
 
 ### Notes
 
-- To refresh the bundled copy when qwen-code updates, re-run QWEN_WRITE_SYSTEM_MD=logtrain/parsers/qwen_system_prompt.md qwen -p "x". 
+- To refresh the bundled copy when qwen-code updates, re-run QWEN_WRITE_SYSTEM_MD=logminer/parsers/qwen_system_prompt.md qwen -p "x". 

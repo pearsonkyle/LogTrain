@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from logtrain.parsers.base import BaseParser, build_tool_schema
+from logminer.parsers.base import BaseParser, build_tool_schema
 
 _BUNDLED_SYSTEM_PROMPT = Path(__file__).parent / "claude_system_prompt.md"
 _USER_SYSTEM_PROMPT = Path.home() / ".claude" / "system.md"

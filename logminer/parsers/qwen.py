@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from logtrain.parsers.base import BaseParser, build_tool_schema
+from logminer.parsers.base import BaseParser, build_tool_schema
 
 _BUNDLED_SYSTEM_PROMPT = Path(__file__).parent / "qwen_system_prompt.md"
 _USER_SYSTEM_PROMPT = Path.home() / ".qwen" / "system.md"
