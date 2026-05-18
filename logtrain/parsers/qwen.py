@@ -5,6 +5,18 @@ from typing import Any
 
 from logtrain.parsers.base import BaseParser, build_tool_schema
 
+_BUNDLED_SYSTEM_PROMPT = Path(__file__).parent / "qwen_system_prompt.md"
+_USER_SYSTEM_PROMPT = Path.home() / ".qwen" / "system.md"
+
+
+def _load_system_prompt() -> str | None:
+    for candidate in (_USER_SYSTEM_PROMPT, _BUNDLED_SYSTEM_PROMPT):
+        if candidate.is_file():
+            text = candidate.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+    return None
+
 
 def _extract_thinking(text: str) -> tuple[str, list[str]]:
     pattern = r"<think>(.*?)</think>"
@@ -145,6 +157,10 @@ class QwenParser(BaseParser):
         valid = [m for m in conversation if m.get("content") or m.get("tool_calls")]
         if len(valid) < min_turns:
             return None
+
+        system_prompt = _load_system_prompt()
+        if system_prompt:
+            valid.insert(0, {"role": "system", "content": system_prompt})
 
         start_time = timestamps[0] if timestamps else None
         end_time = timestamps[-1] if timestamps else None

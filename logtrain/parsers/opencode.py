@@ -5,6 +5,41 @@ from typing import Any
 
 from logtrain.parsers.base import BaseParser, build_tool_schema
 
+_BUNDLED_PROMPT_DIR = Path(__file__).parent / "opencode_prompts"
+_USER_SYSTEM_PROMPT = Path.home() / ".local" / "share" / "opencode" / "system.md"
+
+
+def _select_variant(model_id: str | None) -> str:
+    """Mirror OpenCode's runtime selection (SystemPrompt.provider in opencode bin)."""
+    mid = (model_id or "").strip()
+    mid_lc = mid.lower()
+    if "gpt-4" in mid or "o1" in mid or "o3" in mid:
+        return "beast"
+    if "gpt" in mid:
+        return "codex" if "codex" in mid else "gpt"
+    if "gemini-" in mid:
+        return "gemini"
+    if "claude" in mid:
+        return "anthropic"
+    if "trinity" in mid_lc:
+        return "trinity"
+    if "kimi" in mid_lc:
+        return "kimi"
+    return "default"
+
+
+def _load_system_prompt(model_id: str | None) -> str | None:
+    if _USER_SYSTEM_PROMPT.is_file():
+        text = _USER_SYSTEM_PROMPT.read_text(encoding="utf-8").strip()
+        if text:
+            return text
+    bundled = _BUNDLED_PROMPT_DIR / f"{_select_variant(model_id)}.md"
+    if bundled.is_file():
+        text = bundled.read_text(encoding="utf-8").strip()
+        if text:
+            return text
+    return None
+
 
 class OpenCodeParser(BaseParser):
     SOURCE = "opencode"
@@ -158,9 +193,16 @@ class OpenCodeParser(BaseParser):
         model_val = None
         for msg_row in messages_rows:
             d = json.loads(msg_row["data"])
-            if d.get("model"):
-                model_val = d["model"]
+            m = d.get("model")
+            if isinstance(m, dict):
+                m = m.get("modelID")
+            if m:
+                model_val = m
                 break
+
+        system_prompt = _load_system_prompt(model_val)
+        if system_prompt:
+            valid.insert(0, {"role": "system", "content": system_prompt})
 
         return {
             "id": session_id,

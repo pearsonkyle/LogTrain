@@ -4,6 +4,18 @@ from typing import Any
 
 from logtrain.parsers.base import BaseParser, build_tool_schema
 
+_BUNDLED_SYSTEM_PROMPT = Path(__file__).parent / "claude_system_prompt.md"
+_USER_SYSTEM_PROMPT = Path.home() / ".claude" / "system.md"
+
+
+def _load_system_prompt() -> str | None:
+    for candidate in (_USER_SYSTEM_PROMPT, _BUNDLED_SYSTEM_PROMPT):
+        if candidate.is_file():
+            text = candidate.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+    return None
+
 
 def _stitch_resumed_sessions(parsed: list[dict]) -> list[dict]:
     """Merge sessions linked by parentUuid/leafUuid across files.
@@ -115,7 +127,12 @@ class ClaudeParser(BaseParser):
                 continue
             if r is not None:
                 parsed.append(r)
-        return _stitch_resumed_sessions(parsed)
+        stitched = _stitch_resumed_sessions(parsed)
+        system_prompt = _load_system_prompt()
+        if system_prompt:
+            for s in stitched:
+                s["messages"].insert(0, {"role": "system", "content": system_prompt})
+        return stitched
 
     def parse_session(
         self,

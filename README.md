@@ -31,8 +31,6 @@ raw logs ──parse──▶ *_raw.jsonl
 
 ```bash
 pip install -e .                  # core CLI (stdlib only)
-pip install -e .[validate]        # adds `transformers` for the `validate` subcommand
-pip install -e .[test]            # adds pytest
 ```
 
 Only `validate` pulls in `transformers` — the rest of the pipeline runs on the
@@ -202,3 +200,7 @@ PyPI will reject the upload as a duplicate.
   pip install --upgrade logtrain
   logtrain --help
   ```
+
+### Notes
+
+- To refresh the bundled copy when qwen-code updates, re-run QWEN_WRITE_SYSTEM_MD=logtrain/parsers/qwen_system_prompt.md qwen -p "x". 
