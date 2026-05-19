@@ -2,8 +2,6 @@ import argparse
 import json
 import types
 
-import pytest
-
 from logminer import cli
 
 
@@ -45,7 +43,11 @@ def test_upload_dataset_uses_huggingface_hub(tmp_path, monkeypatch):
             calls.append(("upload_file", kwargs))
 
     monkeypatch.setenv("HF_TOKEN", "hf_test_token")
-    monkeypatch.setattr(cli.importlib, "import_module", lambda name: types.SimpleNamespace(HfApi=FakeHfApi))
+    monkeypatch.setattr(
+        cli.importlib,
+        "import_module",
+        lambda name: types.SimpleNamespace(HfApi=FakeHfApi),
+    )
 
     path = tmp_path / "training.jsonl"
     path.write_text("{}\n")
